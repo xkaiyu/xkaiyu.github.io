@@ -1,9 +1,11 @@
 <!DOCTYPE html>
-<html lang="es-ES">
+<html lang="es">
 <head>
   <meta charset="utf-8">
-  <title>Mapa Mundial de Datos</title>
+  <title>Mapa Global de Datos - Leaflet Local</title>
   <link rel="stylesheet" href="leaflet.css" />
+  <!-- 引入 D3.js -->
+  <script src="d3.v7.min.js"></script>
   <style>
     html, body, #map { height: 100%; margin: 0; padding: 0; background: #000; }
   </style>
@@ -14,67 +16,74 @@
   <script src="leaflet.js"></script>
   <script>
   const map = L.map('map', {
-    zoomControl: true,          // 明确启用 zoom 按钮（默认就是 true）
-    preferCanvas: true          // 性能更好，尤其多边形多
-  }).setView([20, 0], 2);       // 全球视角起点
+    zoomControl: true,
+    preferCanvas: true
+  }).setView([20, 0], 2);
 
-  // 给容器强制背景（备用）
   map.getContainer().style.backgroundColor = '#1e2d4e';
 
-  // 数据（ISO Alpha-2 码 → 值）
+  // Datos (código ISO Alpha-3 → valor)
   const data = {
-    "US": 3200, "CN": 2800, "IN": 1800, "BR": 950, "RU": 880,
-    "DE": 720, "ES":300, "FR": 680, "GB": 650, "JP": 620
-    // 继续加更多国家数据...
+    "USA": 320000000,
+    "CHN": 2800,
+    "IND": 1800,
+    "BRA": 950,
+    "RUS": 880,
+    "DEU": 720,
+    "FRA": 680,
+    "GBR": 650,
+    "JPN": 620
   };
 
-  function getColor(value) {
-    return value > 3000 ? '#800026' :
-           value > 2000 ? '#BD0026' :
-           value > 1000 ? '#E31A1C' :
-           value >  500 ? '#FC4E2A' :
-           value >  100 ? '#FD8D3C' :
-                          '#FFEDA0';
+  // 颜色映射
+  function getColor(value, min, max) {
+    const scale = d3.scaleLinear()
+      .domain([min, max])  // 输入数据的最小值和最大值
+      .range(['#f8fcff', '#08306b']);  // 输出颜色范围，从浅蓝到深蓝
+
+    return scale(value);
   }
 
   function style(feature) {
-    const code = feature.properties.iso_a2?.toUpperCase() || 
-                 feature.properties.ISO_A2?.toUpperCase() || 
-                 feature.properties.adm0_a3?.toUpperCase(); // 兼容不同 geojson 属性
+    const code = feature.properties.adm0_a3;
     const val = data[code] || 0;
+
+    // 动态计算最大最小值
+    const values = Object.values(data);
+    const min = Math.min(...values);
+    const max = Math.max(...values);
+
     return {
-      fillColor: getColor(val),
+      fillColor: getColor(val, min, max),  // 动态获取颜色
       weight: 1,
       opacity: 1,
       color: 'white',
       dashArray: '3',
-      fillOpacity: val ? 0.8 : 0.1  // 无数据国家淡一点，避免全黑
+      fillOpacity: val ? 0.8 : 0.1
     };
   }
 
   function onEachFeature(feature, layer) {
-    const code = feature.properties.iso_a2?.toUpperCase() || 
-                 feature.properties.ISO_A2?.toUpperCase();
-    const name = feature.properties.name || feature.properties.NAME || '未知';
+    const code = feature.properties.adm0_a3;
+    const name = feature.properties.name_es || 'Desconocido';
     const val = data[code] || 'Sin datos';
-    layer.bindTooltip(`${name}<br>Linux: ${val}`, { sticky: true });
+
+    layer.bindTooltip(`${name}<br>Valor: ${val}`, { sticky: true });
 
     layer.on({
       mouseover: e => {
-        e.target.setStyle({ weight: 3, color: '#ffd700', fillOpacity: 0.9 });
-        if (!L.Browser.ie && !L.Browser.opera && !L.Browser.edge) {
-          layer.bringToFront();
-        }
+        e.target.setStyle({ weight: 2, color: '#ffd700', fillOpacity: 0.9 });
+        layer.bringToFront();
       },
       mouseout: e => geojsonLayer.resetStyle(e.target)
     });
   }
 
-  let geojsonLayer; // 存引用方便 resetStyle
+  let geojsonLayer;
 
   fetch('world.geojson')
     .then(res => {
-      if (!res.ok) throw new Error('GeoJSON 文件加载失败：' + res.status);
+      if (!res.ok) throw new Error('Error al cargar el archivo GeoJSON: ' + res.status);
       return res.json();
     })
     .then(geoData => {
@@ -83,14 +92,12 @@
         onEachFeature: onEachFeature
       }).addTo(map);
 
-      map.invalidateSize();     // 强制重绘，解决黑屏/不显示
-      // 可选：自动缩放到 GeoJSON 范围
-      // map.fitBounds(geojsonLayer.getBounds());
+      map.invalidateSize();
     })
     .catch(err => {
-      console.error('错误：', err);
-      alert('无法加载 world.geojson，请检查文件路径或格式！');
+      console.error('Error:', err);
+      alert('No se pudo cargar world.geojson. Verifica la ruta o el formato.');
     });
-</script>
+  </script>
 </body>
 </html>
