@@ -1,13 +1,96 @@
+<!DOCTYPE html>
+<html lang="zh">
 <head>
-<script defer src="https://cloud.umami.is/script.js" data-website-id="4cd9ca6b-4e3f-4d06-874a-97503dd8f48f"></script>
+  <meta charset="utf-8">
+  <title>全球数据Map</title>
+  <link rel="stylesheet" href="leaflet.css" />
+  <style>
+    html, body, #map { height: 100%; margin: 0; padding: 0; background: #000; }
+  </style>
 </head>
-
 <body>
-  <h1>Kaiyu GNU/Linux<br />
-Español</h1>
+  <div id="map"></div>
 
+  <script src="leaflet.js"></script>
+  <script>
+  const map = L.map('map', {
+    zoomControl: true,          // 明确启用 zoom 按钮（默认就是 true）
+    preferCanvas: true          // 性能更好，尤其多边形多
+  }).setView([20, 0], 2);       // 全球视角起点
 
+  // 给容器强制背景（备用）
+  map.getContainer().style.backgroundColor = '#1e2d4e';
 
+  // 数据（ISO Alpha-2 码 → 值）
+  const data = {
+    "US": 3200, "CN": 2800, "IN": 1800, "BR": 950, "RU": 880,
+    "DE": 720, "ES":300, "FR": 680, "GB": 650, "JP": 620
+    // 继续加更多国家数据...
+  };
 
+  function getColor(value) {
+    return value > 3000 ? '#800026' :
+           value > 2000 ? '#BD0026' :
+           value > 1000 ? '#E31A1C' :
+           value >  500 ? '#FC4E2A' :
+           value >  100 ? '#FD8D3C' :
+                          '#FFEDA0';
+  }
 
+  function style(feature) {
+    const code = feature.properties.iso_a2?.toUpperCase() || 
+                 feature.properties.ISO_A2?.toUpperCase() || 
+                 feature.properties.adm0_a3?.toUpperCase(); // 兼容不同 geojson 属性
+    const val = data[code] || 0;
+    return {
+      fillColor: getColor(val),
+      weight: 1,
+      opacity: 1,
+      color: 'white',
+      dashArray: '3',
+      fillOpacity: val ? 0.8 : 0.1  // 无数据国家淡一点，避免全黑
+    };
+  }
+
+  function onEachFeature(feature, layer) {
+    const code = feature.properties.iso_a2?.toUpperCase() || 
+                 feature.properties.ISO_A2?.toUpperCase();
+    const name = feature.properties.name || feature.properties.NAME || '未知';
+    const val = data[code] || '无数据';
+    layer.bindTooltip(`${name}<br>Linux: ${val}`, { sticky: true });
+
+    layer.on({
+      mouseover: e => {
+        e.target.setStyle({ weight: 3, color: '#ffd700', fillOpacity: 0.9 });
+        if (!L.Browser.ie && !L.Browser.opera && !L.Browser.edge) {
+          layer.bringToFront();
+        }
+      },
+      mouseout: e => geojsonLayer.resetStyle(e.target)
+    });
+  }
+
+  let geojsonLayer; // 存引用方便 resetStyle
+
+  fetch('world.geojson')
+    .then(res => {
+      if (!res.ok) throw new Error('GeoJSON 文件加载失败：' + res.status);
+      return res.json();
+    })
+    .then(geoData => {
+      geojsonLayer = L.geoJSON(geoData, {
+        style: style,
+        onEachFeature: onEachFeature
+      }).addTo(map);
+
+      map.invalidateSize();     // 强制重绘，解决黑屏/不显示
+      // 可选：自动缩放到 GeoJSON 范围
+      // map.fitBounds(geojsonLayer.getBounds());
+    })
+    .catch(err => {
+      console.error('错误：', err);
+      alert('无法加载 world.geojson，请检查文件路径或格式！');
+    });
+</script>
 </body>
+</html>
