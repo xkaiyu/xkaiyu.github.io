@@ -1,8 +1,8 @@
 <!DOCTYPE html>
-<html lang="zh">
+<html lang="es-ES">
 <head>
   <meta charset="utf-8">
-  <title>全球数据Map</title>
+  <title>Mapa Mundial de Datos</title>
   <link rel="stylesheet" href="leaflet.css" />
   <style>
     html, body, #map { height: 100%; margin: 0; padding: 0; background: #000; }
@@ -56,7 +56,7 @@
     const code = feature.properties.iso_a2?.toUpperCase() || 
                  feature.properties.ISO_A2?.toUpperCase();
     const name = feature.properties.name || feature.properties.NAME || '未知';
-    const val = data[code] || '无数据';
+    const val = data[code] || 'Sin datos';
     layer.bindTooltip(`${name}<br>Linux: ${val}`, { sticky: true });
 
     layer.on({
